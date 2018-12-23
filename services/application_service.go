@@ -13,8 +13,8 @@ type ApplicationService struct {
 	Model *models.Model
 }
 
-func FindOne(name string, client *mongo.Client) (interface{}, error) {
-	data, err := models.FindOne(map[string]string{"_id": name}, client, applicationCollection)
+func FindOne(query map[string]string, client *mongo.Client) (interface{}, error) {
+	data, err := models.FindOne(query, client, applicationCollection)
 	if err != nil {
 		return map[string]string{}, err
 	}
@@ -33,4 +33,9 @@ func RegisterApplication(decoder *json.Decoder, client *mongo.Client) (interface
 func FindAllApplications(client *mongo.Client) []interface{} {
 	results, _ := models.FindAll(map[string]interface{}{}, client, applicationCollection)
 	return results
+}
+
+func FindOneApplication(query map[string]string, client *mongo.Client) map[string]interface{} {
+	result, _ := models.FindOne(query, client, applicationCollection)
+	return *result
 }

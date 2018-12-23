@@ -17,7 +17,7 @@ type PersistableInterface interface {
 
 type Model struct {
 	data PersistableInterface
-	db   *mongo.Client // you are going to change this moving forward
+	db   *mongo.Client
 }
 
 func NewModel(body PersistableInterface) *Model {
@@ -32,14 +32,16 @@ func Save(body PersistableInterface, client *mongo.Client, c string) (interface{
 	return res.InsertedID, err
 }
 
-func FindOne(query map[string]string, client *mongo.Client, c string) (interface{}, error) {
+func FindOne(query map[string]string, client *mongo.Client, c string) (*map[string]interface{}, error) {
 	cancel, ctx, collection := yieldCollection(30, client, c)
 	defer cancel()
-	var result struct{}
+	var result map[string]interface{}
 	err := collection.FindOne(ctx, query).Decode(&result)
 	return &result, err
 }
 
+// TODO: This has to be role based in the future - only the admin running this locally should be able to get
+//this
 func FindAll(query interface{}, client *mongo.Client, c string) ([]interface{}, error) {
 	cancel, ctx, collection := yieldCollection(30, client, c)
 	defer cancel()
@@ -62,7 +64,6 @@ func FindAll(query interface{}, client *mongo.Client, c string) ([]interface{}, 
 func UpdateOne(name string, changes map[string]interface{}, client *mongo.Client, c string) *mongo.SingleResult {
 	cancel, ctx, collection := yieldCollection(30, client, c)
 	defer cancel()
-	// check if the application exists then do
 	res := collection.FindOneAndUpdate(ctx, map[string]string{"name": name}, changes)
 	return res
 }
@@ -73,6 +74,7 @@ func DeleteOne(name string, client *mongo.Client, c string) *mongo.SingleResult 
 	res := collection.FindOneAndDelete(ctx, map[string]string{"name": name})
 	return res
 }
+
 func yieldCollection(timeout time.Duration, client *mongo.Client, c string) (context.CancelFunc, context.Context, *mongo.Collection) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout*time.Second)
 	collection := client.Database(database).Collection(c)

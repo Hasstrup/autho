@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -28,8 +27,8 @@ func registerRoutes(c *mongo.Client) *mux.Router {
 
 	s.HandleFunc("/register", a.RegisterApplication).Methods("POST")
 	s.HandleFunc("/application/update/{id}", a.UpdateApplicationDetails).Methods("PUT")
-	s.HandleFunc("/application/{id}", a.GetApplicationDetails).Methods("Get")
-	s.HandleFunc("/application/available", a.CheckAvailability).Methods("POST")
+	s.HandleFunc("/application/{name}/{appKey}", a.GetApplicationDetails).Methods("Get")
+	s.HandleFunc("/available/{name}", a.CheckAvailability).Methods("GET")
 	s.HandleFunc("/applications", a.GetAllApplications).Methods("GET")
 	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		utils.RespondWithJSON(w, 200, map[string]interface{}{"up": true})
@@ -39,10 +38,10 @@ func registerRoutes(c *mongo.Client) *mux.Router {
 }
 
 func start(router *mux.Router) {
+	log.Printf("The server is listening on port 4600")
 	err := http.ListenAndServe(":4600", router)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
-	fmt.Println("The server is listening on port 4600")
 
 }
