@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/authenticate/middlewares"
 	"github.com/authenticate/models"
 	utils "github.com/authenticate/utilities"
 	"github.com/mongodb/mongo-go-driver/mongo"
@@ -22,6 +23,7 @@ func main() {
 
 func registerRoutes(c *mongo.Client) *mux.Router {
 	r := mux.NewRouter()
+	r.Use(middlewares.RequestLogger)
 	s := r.PathPrefix("/api/v1").Subrouter()
 	a := controllers.NewApplicationController(c)
 
