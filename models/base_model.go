@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"flag"
 	"log"
 	"time"
 
@@ -9,7 +10,7 @@ import (
 	"github.com/mongodb/mongo-go-driver/mongo"
 )
 
-const database = "autho"
+var database = *flag.String("database", "autho", "The database for your application to run in")
 
 type PersistableInterface interface {
 	Collection() string
@@ -24,12 +25,13 @@ type Model struct {
 func NewModel(body PersistableInterface) *Model {
 	return &Model{data: body}
 }
-func Save(body PersistableInterface, client *mongo.Client, c string) (interface{}, error) {
+
+func Save(body PersistableInterface, client *mongo.Client, c string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	collection := client.Database(database).Collection(c)
 	defer cancel()
-	res, err := collection.InsertOne(ctx, body.Fields())
-	return res.InsertedID, err
+	_, err := collection.InsertOne(ctx, body.Fields())
+	return err
 }
 
 func FindOne(query map[string]string, client *mongo.Client, c string) (interface{}, error) {
@@ -62,7 +64,6 @@ func FindAll(query interface{}, client *mongo.Client, c string) ([]interface{}, 
 func UpdateOne(name string, changes map[string]interface{}, client *mongo.Client, c string) *mongo.SingleResult {
 	cancel, ctx, collection := yieldCollection(30, client, c)
 	defer cancel()
-	// check if the application exists then do
 	res := collection.FindOneAndUpdate(ctx, map[string]string{"name": name}, changes)
 	return res
 }
