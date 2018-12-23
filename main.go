@@ -14,7 +14,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var mongoConnectionString = flag.String("mongostring", "Placeholder", "The mongo connection string")
+var mongoConnectionString = flag.String("mongostring", "mongodb://localhost:27017", "The mongo connection string")
 
 func main() {
 	client := models.RegisterDatabase(*mongoConnectionString)
@@ -23,12 +23,12 @@ func main() {
 
 func registerRoutes(c *mongo.Client) *mux.Router {
 	r := mux.NewRouter()
+	s := r.PathPrefix("/api/v1").Subrouter()
+	a := controllers.NewApplicationController(c)
 
 	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		utils.RespondWithJSON(w, 200, map[string]interface{}{"up": true})
 	}).Methods("Get")
-	s := r.PathPrefix("/api/v1").Subrouter()
-	a := controllers.NewApplicationController()
 	s.HandleFunc("/register", a.RegisterApplication).Methods("POST")
 	s.HandleFunc("/application/update/{id}", a.UpdateApplicationDetails).Methods("PUT")
 	s.HandleFunc("/application/{id}", a.GetApplicationDetails).Methods("Get")

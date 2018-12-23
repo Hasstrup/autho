@@ -1,18 +1,27 @@
 package controllers
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/authenticate/services"
 	utils "github.com/authenticate/utilities"
+	"github.com/mongodb/mongo-go-driver/mongo"
 )
 
 type ApplicationController struct {
 	service *services.ApplicationService
+	client  *mongo.Client
 }
 
 func (ctr *ApplicationController) RegisterApplication(w http.ResponseWriter, r *http.Request) {
-	utils.RespondWithJSON(w, 200, []interface{}{map[string]string{"status": "success"}})
+	dec := json.NewDecoder(r.Body)
+	defer r.Body.Close()
+	app, err := services.RegisterApplication(dec, ctr.client)
+	if err != nil {
+		utils.RespondWithJSON(w, 400, map[string]interface{}{"error": err.Error()})
+	}
+	utils.RespondWithJSON(w, 200, app)
 }
 
 func (ctr *ApplicationController) GetApplicationDetails(w http.ResponseWriter, r *http.Request) {
@@ -27,6 +36,6 @@ func (ctr *ApplicationController) CheckAvailability(w http.ResponseWriter, r *ht
 	utils.RespondWithJSON(w, 200, map[string]string{"here": "now"})
 }
 
-func NewApplicationController() *ApplicationController {
-	return &ApplicationController{service: &services.ApplicationService{}}
+func NewApplicationController(client *mongo.Client) *ApplicationController {
+	return &ApplicationController{service: &services.ApplicationService{}, client: client}
 }

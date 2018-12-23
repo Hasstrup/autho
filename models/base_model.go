@@ -11,33 +11,37 @@ import (
 
 const database = "autho"
 
-type abstractInterface interface {
+type PersistableInterface interface {
 	Collection() string
-	Fields() interface{}
+	Fields() map[string]interface{}
 }
 
 type Model struct {
-	data abstractInterface
+	data PersistableInterface
 	db   *mongo.Client // you are going to change this moving forward
 }
 
-func (m *Model) Save(body interface{}) (interface{}, error) {
-	cancel, ctx, collection := m.yieldCollection(3)
+func NewModel(body PersistableInterface) *Model {
+	return &Model{data: body}
+}
+func Save(body PersistableInterface, client *mongo.Client, c string) (interface{}, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	collection := client.Database(database).Collection(c)
 	defer cancel()
-	res, err := collection.InsertOne(ctx, m.data.Fields())
+	res, err := collection.InsertOne(ctx, body.Fields())
 	return res.InsertedID, err
 }
 
-func (m *Model) FindOne(query map[string]interface{}) (interface{}, error) {
-	cancel, ctx, collection := m.yieldCollection(30)
+func FindOne(query map[string]string, client *mongo.Client, c string) (interface{}, error) {
+	cancel, ctx, collection := yieldCollection(30, client, c)
 	defer cancel()
 	var result struct{}
 	err := collection.FindOne(ctx, query).Decode(&result)
 	return &result, err
 }
 
-func (m *Model) FindAll(query interface{}) ([]interface{}, error) {
-	cancel, ctx, collection := m.yieldCollection(30)
+func FindAll(query interface{}, client *mongo.Client, c string) ([]interface{}, error) {
+	cancel, ctx, collection := yieldCollection(30, client, c)
 	defer cancel()
 	var results []interface{}
 	cur, err := collection.Find(ctx, query)
@@ -55,22 +59,22 @@ func (m *Model) FindAll(query interface{}) ([]interface{}, error) {
 	return results, err
 }
 
-func (m *Model) UpdateOne(name string, changes map[string]interface{}) *mongo.SingleResult {
-	cancel, ctx, collection := m.yieldCollection(30)
+func UpdateOne(name string, changes map[string]interface{}, client *mongo.Client, c string) *mongo.SingleResult {
+	cancel, ctx, collection := yieldCollection(30, client, c)
 	defer cancel()
 	// check if the application exists then do
 	res := collection.FindOneAndUpdate(ctx, map[string]string{"name": name}, changes)
 	return res
 }
 
-func (m *Model) DeleteOne(name string) *mongo.SingleResult {
-	cancel, ctx, collection := m.yieldCollection(30)
+func DeleteOne(name string, client *mongo.Client, c string) *mongo.SingleResult {
+	cancel, ctx, collection := yieldCollection(30, client, c)
 	defer cancel()
 	res := collection.FindOneAndDelete(ctx, map[string]string{"name": name})
 	return res
 }
-func (m *Model) yieldCollection(timeout time.Duration) (context.CancelFunc, context.Context, *mongo.Collection) {
+func yieldCollection(timeout time.Duration, client *mongo.Client, c string) (context.CancelFunc, context.Context, *mongo.Collection) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout*time.Second)
-	collection := m.db.Database(database).Collection(m.data.Collection())
+	collection := client.Database(database).Collection(c)
 	return cancel, ctx, collection
 }
