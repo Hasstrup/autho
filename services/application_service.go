@@ -29,3 +29,8 @@ func RegisterApplication(decoder *json.Decoder, client *mongo.Client) (interface
 	_, err := models.Save(m, client, applicationCollection)
 	return &m, err
 }
+
+func FindAllApplications(client *mongo.Client) []interface{} {
+	results, _ := models.FindAll(map[string]interface{}{}, client, applicationCollection)
+	return results
+}

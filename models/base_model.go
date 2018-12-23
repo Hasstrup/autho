@@ -5,7 +5,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/mongodb/mongo-go-driver/bson"
 	"github.com/mongodb/mongo-go-driver/mongo"
 )
 
@@ -24,6 +23,7 @@ type Model struct {
 func NewModel(body PersistableInterface) *Model {
 	return &Model{data: body}
 }
+
 func Save(body PersistableInterface, client *mongo.Client, c string) (interface{}, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	collection := client.Database(database).Collection(c)
@@ -49,7 +49,7 @@ func FindAll(query interface{}, client *mongo.Client, c string) ([]interface{}, 
 		return nil, err
 	}
 	for cur.Next(ctx) {
-		var result bson.M
+		var result map[string]interface{}
 		err := cur.Decode(&result)
 		if err != nil {
 			log.Fatal(err)

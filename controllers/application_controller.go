@@ -28,6 +28,11 @@ func (ctr *ApplicationController) GetApplicationDetails(w http.ResponseWriter, r
 	utils.RespondWithJSON(w, 200, map[string]string{"here": "now"})
 }
 
+func (ctr *ApplicationController) GetAllApplications(w http.ResponseWriter, r *http.Request) {
+	results := services.FindAllApplications(ctr.client)
+	utils.RespondWithJSON(w, 200, results)
+}
+
 func (ctr *ApplicationController) UpdateApplicationDetails(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithJSON(w, 200, map[string]string{"here": "now"})
 }

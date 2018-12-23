@@ -26,13 +26,15 @@ func registerRoutes(c *mongo.Client) *mux.Router {
 	s := r.PathPrefix("/api/v1").Subrouter()
 	a := controllers.NewApplicationController(c)
 
-	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		utils.RespondWithJSON(w, 200, map[string]interface{}{"up": true})
-	}).Methods("Get")
 	s.HandleFunc("/register", a.RegisterApplication).Methods("POST")
 	s.HandleFunc("/application/update/{id}", a.UpdateApplicationDetails).Methods("PUT")
 	s.HandleFunc("/application/{id}", a.GetApplicationDetails).Methods("Get")
 	s.HandleFunc("/application/available", a.CheckAvailability).Methods("POST")
+	s.HandleFunc("/applications", a.GetAllApplications).Methods("GET")
+	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		utils.RespondWithJSON(w, 200, map[string]interface{}{"up": true})
+	}).Methods("Get")
+
 	return r
 }
 
