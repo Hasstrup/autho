@@ -69,13 +69,10 @@ func validateDatabaseStructure(e interface{}, ch chan interface{}, counter *int,
 		if !utils.Contains(e, PermittedDatabaseTypes) {
 			ch <- "Currently we only support postgresql and mongodb"
 		} else {
-			// check that the schema is a map
-			if reflect.TypeOf(schema).Name() != "map" {
+			if sch, isValidMap := schema.(map[string]interface{}); !isValidMap {
 				ch <- "app_schema must be an object containing the fields that are either required"
 			} else {
-				for key, value := range schema.(map[string]interface{}) {
-					// TODO: refactor this whole thing, so messy and long I could barely breathe
-					// reading this thing
+				for key, value := range sch {
 					if val, ok := value.(string); ok {
 						valid, err := isValidDataType(e.(string), val)
 						if err != nil {
@@ -83,7 +80,7 @@ func validateDatabaseStructure(e interface{}, ch chan interface{}, counter *int,
 							break
 						}
 						if !valid {
-							ch <- key + " is not a supported datatype for the database provided"
+							ch <- "app_schema (" + key + ") must either be a 'string' or 'number' per database provided"
 						}
 						continue
 					}
@@ -91,15 +88,20 @@ func validateDatabaseStructure(e interface{}, ch chan interface{}, counter *int,
 						if _, present := val["type"]; !present {
 							ch <- "Please specify the datatype for " + key
 						} else {
-							// HMMMMM potential bug here
 							str, ok := val["type"].(string)
-							if valid, _ := isValidDataType(e.(string), str); ok && valid {
-								continue
+							if valid, err := isValidDataType(e.(string), str); ok && valid {
+								if err != nil {
+									ch <- err.Error()
+									break
+								}
+							} else {
+								ch <- "app_schema (" + key + ") must either be 'string' or 'number' per database provided"
 							}
-							ch <- "The type specified for " + key + " must either be 'string' or 'number'"
 						}
-
+						continue
 					}
+					//the value is neither a string nor an object
+					ch <- "The value of " + key + " should be a 'string' or an object (with a type field) :)"
 				}
 			}
 		}
@@ -109,9 +111,10 @@ func validateDatabaseStructure(e interface{}, ch chan interface{}, counter *int,
 }
 
 func isValidDataType(database, value string) (bool, error) {
-	var permittedTypes map[string][]interface{}
-	permittedTypes["postgres"] = []interface{}{"string", "number"}
-	permittedTypes["mongodb"] = []interface{}{"string", "number"}
+	var permittedTypes = map[string][]interface{}{
+		"postgres": []interface{}{"string", "number"},
+		"mongodb":  []interface{}{"string", "number"},
+	}
 	if _, ok := permittedTypes[database]; !ok {
 		return false, errors.New("The database provided isn't supported yet :)")
 	}
