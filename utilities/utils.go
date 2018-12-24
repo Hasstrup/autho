@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"reflect"
 )
 
 func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
@@ -26,4 +27,14 @@ func DecodeJSON(source []byte, target interface{}) {
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
+}
+
+func Contains(el interface{}, ar []interface{}) bool {
+	for _, val := range ar {
+		if reflect.TypeOf(val).Name() == reflect.TypeOf(el).Name() &&
+			reflect.ValueOf(el).Interface() == reflect.ValueOf(val).Interface() {
+			return true
+		}
+	}
+	return false
 }

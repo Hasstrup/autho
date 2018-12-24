@@ -8,12 +8,14 @@ import (
 	utils "github.com/authenticate/utilities"
 )
 
+var PermittedDatabaseTypes = []interface{}{"postgres", "mongodb"}
+
 func SanitizeApplicationRequest(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var request map[string]interface{}
 		var errors []string
 		ch := make(chan interface{})
-		numberOfChecksDone := 0
+		numberOfChecksDone, expectedNumberOfChecks := 0, 2
 		defer r.Body.Close()
 		err := json.NewDecoder(r.Body).Decode(&request)
 		if err != nil {
@@ -21,13 +23,13 @@ func SanitizeApplicationRequest(next http.Handler) http.Handler {
 			return
 		}
 		go checkForEmptyValuesInBody(request, ch, &numberOfChecksDone)
-
+		go validateDatabaseStructure(request["database"], ch, &numberOfChecksDone)
 		for msg := range ch {
 			switch msg.(type) {
 			case string:
 				errors = append(errors, msg.(string))
 			case bool:
-				if numberOfChecksDone == 1 {
+				if numberOfChecksDone == expectedNumberOfChecks {
 					close(ch)
 				}
 			}
@@ -58,4 +60,17 @@ func checkForLength(t reflect.Type, entity interface{}) bool {
 	default:
 		return false
 	}
+}
+
+func validateDatabaseStructure(e interface{}, ch chan interface{}, counter *int) {
+	if _, ok := e.(string); !ok {
+		ch <- "Database must be a string"
+	} else {
+		if !utils.Contains(e, PermittedDatabaseTypes) {
+			ch <- "Currently we only support postgresql and mongodb"
+		}
+	}
+	*counter++
+	ch <- true
+
 }
