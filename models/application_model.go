@@ -8,6 +8,7 @@ type ApplicationModel struct {
 	Schema   map[string]interface{} `json:"app_schema" bson:"app_schema"`
 	Key      string                 `json:"app_key" bson:"app_key"`
 	Database string                 `json:"database" bson:"database"`
+	Address  string                 `json:"address" bson:"database"`
 }
 
 func (m ApplicationModel) Collection() string {
@@ -21,6 +22,7 @@ func (m ApplicationModel) Fields() map[string]interface{} {
 		"app_key":  m.Key,
 		"database": m.Database,
 		"schema":   m.Schema,
+		"address":  m.Address,
 	}
 	return results
 }

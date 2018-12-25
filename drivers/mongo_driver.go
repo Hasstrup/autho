@@ -6,22 +6,16 @@ import (
 	"time"
 
 	"github.com/mongodb/mongo-go-driver/mongo"
-	"github.com/mongodb/mongo-go-driver/mongo/readpref"
 )
 
 func PingMongo(address string) error {
-	client, err := mongo.NewClient(address)
-	if err != nil {
-		return errors.New("Please check the mongo string provided should match 'mongodb://therestofyourmongostring' ")
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	_, err := mongo.Connect(ctx, address)
+	if err != nil {
+		return errors.New("We tried connecting to the mongostring provided, did not work out :(.The mongo string provided should match 'mongodb://therestofyourmongostring' ")
+	}
 	defer cancel()
 	defer Recover()
-	err = client.Ping(ctx, readpref.Primary())
-	if err != nil {
-		// TODO: You need to extract all these error messages somewhere
-		return errors.New("We tried pinging the mongo address you provided, didn't work out")
-	}
 	return nil
 }
 
