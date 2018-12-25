@@ -23,6 +23,8 @@ func SanitizeApplicationRequest(next http.Handler) http.Handler {
 			utils.RespondWithJSON(w, 400, map[string]string{"error": "Unable to parse the input sent"})
 			return
 		}
+		// TODO: required fields include "name", "schema", "app_key", "database", "address"
+		// TODO: You want to make sure everything that is sent matches the datatype you expected
 		go checkForEmptyValuesInBody(request, ch, &numberOfChecksDone)
 		go validateDatabaseStructure(request["database"], ch, &numberOfChecksDone, request["app_schema"])
 		for msg := range ch {
