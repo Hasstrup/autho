@@ -16,7 +16,7 @@ func SanitizeApplicationRequest(next http.Handler) http.Handler {
 		var request map[string]interface{}
 		var errors []string
 		ch := make(chan interface{})
-		numberOfChecksDone, expectedNumberOfChecks := 0, 3
+		numberOfChecksDone, expectedNumberOfChecks := 0, 4
 		defer r.Body.Close()
 		err := json.NewDecoder(r.Body).Decode(&request)
 		if err != nil {
@@ -25,9 +25,11 @@ func SanitizeApplicationRequest(next http.Handler) http.Handler {
 		}
 		// TODO: required fields include "name", "schema", "app_key", "database", "address"
 		// TODO: You want to make sure everything that is sent matches the datatype you expected
+		// Updates: Done
+		go CheckForRequiredFieldsInRequestBody(request, ch, &numberOfChecksDone)
 		go checkForEmptyValuesInBody(request, ch, &numberOfChecksDone)
 		go validateDatabaseStructure(request["database"], ch, &numberOfChecksDone, request["app_schema"])
-		go PingDatabaseAddress(request["database"].(string), request["address"].(string), ch, &numberOfChecksDone)
+		go PingDatabaseAddress(request["database"], request["address"], ch, &numberOfChecksDone)
 		for msg := range ch {
 			switch msg.(type) {
 			case string:
