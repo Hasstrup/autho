@@ -11,9 +11,11 @@ import (
 	"github.com/mongodb/mongo-go-driver/x/bsonx"
 )
 
+var Client *mongo.Client
+
 func RegisterDatabase(str string) *mongo.Client {
 	flag.Parse()
-	client, err := mongo.NewClient(str)
+	Client, err := mongo.NewClient(str)
 	if err != nil {
 		log.Fatalf("Failed to connect to the mongo database: Error %v", err.Error())
 		panic("failed to connect")
@@ -22,9 +24,9 @@ func RegisterDatabase(str string) *mongo.Client {
 
 	defer cancel()
 
-	err = client.Connect(ctx)
-	PopulateCollectionIndexes(client)
-	return client
+	err = Client.Connect(ctx)
+	PopulateCollectionIndexes(Client)
+	return Client
 }
 
 func PopulateCollectionIndexes(client *mongo.Client) {

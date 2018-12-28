@@ -5,13 +5,14 @@ import (
 	"flag"
 
 	"github.com/authenticate/models"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/mongodb/mongo-go-driver/mongo"
 )
 
 const applicationCollection = "application"
 
 // TODO: shift this to an os.LookUp instead thanks
-var pass = flag.String("passcode", "Thisshouldnevereverbeused", "The ultimate key to encrypting everything")
+var Pass = flag.String("passcode", "Thisshouldnevereverbeused", "The ultimate key to encrypting everything")
 
 type ApplicationService struct {
 	Model *models.Model
@@ -31,12 +32,12 @@ func RegisterApplication(m *models.ApplicationModel, client *mongo.Client) (inte
 	}
 	m.Address, _ = HashWithBcrypt(m.Address)
 	m.Key, _ = HashWithBcrypt(m.Key)
-	encryptedKey, _ := Encrypt([]byte(m.Name+"--"+m.Address), *pass)
+	encryptedKey, _ := Encrypt([]byte(m.Name+"--"+m.Address), *Pass)
 	// Hash the api key right before saving
-	m.ApiKey, _ = HashWithBcrypt(encryptedKey)
+	m.ApiKey, _ = HashWithBcrypt(string(encryptedKey))
 	_, err := models.Save(m, client, applicationCollection)
-	//TODO: this key is actually too cryptic, we need to change it perhaps
-	m.ApiKey = encryptedKey
+	claims := jwt.MapClaims{"payload": CustomSlice(encryptedKey)}
+	m.ApiKey = EncodeWithJwt(claims)
 	return &m, err
 }
 
