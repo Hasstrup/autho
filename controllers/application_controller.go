@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/mux"
 
+	"github.com/authenticate/models"
 	"github.com/authenticate/services"
 	utils "github.com/authenticate/utilities"
 	"github.com/mongodb/mongo-go-driver/mongo"
@@ -17,11 +18,17 @@ type ApplicationController struct {
 }
 
 func (ctr *ApplicationController) RegisterApplication(w http.ResponseWriter, r *http.Request) {
-	dec := json.NewDecoder(r.Body)
+	var m models.ApplicationModel
 	defer r.Body.Close()
-	app, err := services.RegisterApplication(dec, ctr.client)
+	err := json.NewDecoder(r.Body).Decode(&m)
 	if err != nil {
 		utils.RespondWithJSON(w, 400, map[string]interface{}{"error": err.Error()})
+		return
+	}
+	app, err := services.RegisterApplication(&m, ctr.client)
+	if err != nil {
+		utils.RespondWithJSON(w, 400, map[string]interface{}{"error": err.Error()})
+		return
 	}
 	utils.RespondWithJSON(w, 200, app)
 }

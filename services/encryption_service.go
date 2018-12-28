@@ -11,7 +11,12 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// USERS ULTIMATELY REQUIRE AN APPLICATION NAME AND PASSWORD FOR
+/*
+ ULTIMATELY WE WANT TO BUILD A SYSTEM THAT IS REALLY TRUST WORTHY, SO WE'LL
+ BE STORING THEIR APP_PASSWORDS AND THE DATABASE ADDRESS. THE LOGIC WILL BE TO ENCRYPT
+ THE ADDRESS + THE NAME OF THE APP (SINCE THIS IS UNIQUE), WE'D USE THIS TO GENERATE THE API_KEY
+ THEN PERSIST THE HASHED API_KEY FOR THE APPLICATION KEY. THEN TRY TO GET THE
+*/
 func Encrypt(data []byte, passphrase string) (string, error) {
 	block, _ := aes.NewCipher([]byte(writeHash(passphrase)))
 	gcm, err := cipher.NewGCM(block)
@@ -48,7 +53,8 @@ func Decrypt(data []byte, passphrase string) (string, error) {
 func HashWithBcrypt(key string) (string, error) {
 	data := []byte(key)
 	cost := 10
-	if bytesHash, err := bcrypt.GenerateFromPassword(data, cost); err != nil {
+	bytesHash, err := bcrypt.GenerateFromPassword(data, cost)
+	if err != nil {
 		return "", err
 	}
 	return string(bytesHash), nil

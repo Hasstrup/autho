@@ -54,6 +54,7 @@ func FindAll(query interface{}, client *mongo.Client, c string) ([]interface{}, 
 		var result map[string]interface{}
 		err := cur.Decode(&result)
 		if err != nil {
+			// lol can't fatal anything here o. Remember to quietly fail
 			log.Fatal(err)
 		}
 		results = append(results, result)
