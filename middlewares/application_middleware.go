@@ -1,8 +1,10 @@
 package middlewares
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"net/http"
 	"reflect"
 
@@ -23,9 +25,7 @@ func SanitizeApplicationRequest(next http.Handler) http.Handler {
 			utils.RespondWithJSON(w, 400, map[string]string{"error": "Unable to parse the input sent"})
 			return
 		}
-		// TODO: required fields include "name", "schema", "app_key", "database", "address"
-		// TODO: You want to make sure everything that is sent matches the datatype you expected
-		// Updates: Done
+
 		go CheckForRequiredFieldsInRequestBody(request, ch, &numberOfChecksDone)
 		go checkForEmptyValuesInBody(request, ch, &numberOfChecksDone)
 		go validateDatabaseStructure(request["database"], ch, &numberOfChecksDone, request["app_schema"])
@@ -44,6 +44,10 @@ func SanitizeApplicationRequest(next http.Handler) http.Handler {
 			utils.RespondWithJSON(w, 400, map[string][]string{"errors": errors})
 			return
 		}
+
+		//reset the content of r.Body
+		b, _ := json.Marshal(request)
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(b))
 		next.ServeHTTP(w, r)
 	})
 }

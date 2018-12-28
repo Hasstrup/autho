@@ -1,13 +1,17 @@
 package services
 
 import (
-	"encoding/json"
+	"errors"
+	"flag"
 
 	"github.com/authenticate/models"
 	"github.com/mongodb/mongo-go-driver/mongo"
 )
 
 const applicationCollection = "application"
+
+// TODO: shift this to an os.LookUp instead thanks
+var pass = flag.String("passcode", "Thisshouldnevereverbeused", "The ultimate key to encrypting everything")
 
 type ApplicationService struct {
 	Model *models.Model
@@ -21,12 +25,18 @@ func FindOne(query map[string]string, client *mongo.Client) (interface{}, error)
 	return data, err
 }
 
-func RegisterApplication(decoder *json.Decoder, client *mongo.Client) (interface{}, error) {
-	var m models.ApplicationModel
-	if err := decoder.Decode(&m); err != nil {
-		return nil, err
+func RegisterApplication(m *models.ApplicationModel, client *mongo.Client) (interface{}, error) {
+	if itExists(m.Name, client) {
+		return nil, errors.New("Sorry the name is already taken :( ")
 	}
+	m.Address, _ = HashWithBcrypt(m.Address)
+	m.Key, _ = HashWithBcrypt(m.Key)
+	encryptedKey, _ := Encrypt([]byte(m.Name+"--"+m.Address), *pass)
+	// Hash the api key right before saving
+	m.ApiKey, _ = HashWithBcrypt(encryptedKey)
 	_, err := models.Save(m, client, applicationCollection)
+	//TODO: this key is actually too cryptic, we need to change it perhaps
+	m.ApiKey = encryptedKey
 	return &m, err
 }
 
@@ -38,4 +48,10 @@ func FindAllApplications(client *mongo.Client) []interface{} {
 func FindOneApplication(query map[string]string, client *mongo.Client) map[string]interface{} {
 	result, _ := models.FindOne(query, client, applicationCollection)
 	return *result
+}
+
+func itExists(name string, client *mongo.Client) bool {
+	item := FindOneApplication(map[string]string{"name": name}, client)
+	_, ok := item["_id"]
+	return ok
 }
