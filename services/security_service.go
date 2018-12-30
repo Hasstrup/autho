@@ -2,12 +2,13 @@ package services
 
 import (
 	"errors"
+	"log"
 
 	"github.com/authenticate/models"
 	"github.com/mongodb/mongo-go-driver/mongo"
 )
 
-func YieldAppFromApiKey(key, secret string, client *mongo.Client) (*map[string]interface{}, error) {
+func YieldAppFromApiKey(key, secret string, client *mongo.Client) (*models.WorkableApplication, error) {
 	k, err := ParseFromJwToken(key)
 	if err != nil {
 		return nil, err
@@ -16,15 +17,15 @@ func YieldAppFromApiKey(key, secret string, client *mongo.Client) (*map[string]i
 	_, err = Decrypt(payload, *Pass)
 	hash, _ := Hash256(string(payload))
 	query := map[string]string{"api_key": hash}
-	result, err := models.FindOne(query, client, "application")
+	result, err := models.FindWorkableApplication(query, client, "application")
 	if err != nil {
+		log.Println(err)
 		return result, errors.New("Sorry we had problems finding the app with that key")
 	}
-	item := *result
-	if _, ok := item["_id"]; !ok {
+	if result.Name == "" {
 		return result, errors.New("There is no application with that api key provided")
 	}
-	if !CompareWithBcrypt(item["app_key"].(string), secret) {
+	if !CompareWithBcrypt(result.AppKey, secret) {
 		return nil, errors.New("Hey you do not have permissions to do that")
 	}
 	return result, nil

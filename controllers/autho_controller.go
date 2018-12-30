@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/authenticate/services"
 	utils "github.com/authenticate/utilities"
 )
 
@@ -21,9 +22,14 @@ type AuthController struct {
 func (AuthController) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	var body map[string]interface{}
 	err := json.NewDecoder(r.Body).Decode(&body)
+	// log.Println(body["main_application"])
+	app := body["main_application"].(map[string]interface{})
+	schema := app["Schema"].(map[string]interface{})
+	delete(body, "main_application")
+	errors := services.ValidateRequestAgainstSchema(utils.DeleteNilKeys(schema), body)
 	if err != nil {
 		utils.RespondWithJSON(w, 400, map[string]string{"error": err.Error()})
 		return
 	}
-	utils.RespondWithJSON(w, 200, map[string]interface{}{"application": body})
+	utils.RespondWithJSON(w, 200, map[string]interface{}{"application": errors})
 }

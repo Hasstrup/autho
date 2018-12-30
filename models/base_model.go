@@ -40,6 +40,14 @@ func FindOne(query map[string]string, client *mongo.Client, c string) (*map[stri
 	return &result, err
 }
 
+func FindWorkableApplication(query map[string]string, client *mongo.Client, c string) (*WorkableApplication, error) {
+	cancel, ctx, collection := yieldCollection(30, client, c)
+	defer cancel()
+	var r WorkableApplication
+	err := collection.FindOne(ctx, query).Decode(&r)
+	return &r, err
+}
+
 // TODO: This has to be role based in the future - only the admin running this locally should be able to get
 //this
 func FindAll(query interface{}, client *mongo.Client, c string) ([]interface{}, error) {
