@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/md5"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"flag"
@@ -45,6 +46,13 @@ func Encrypt(data []byte, passphrase string) ([]byte, error) {
 	// this Passphrase has to be an os.LookUP : Potential vulnerability
 	ciphertext := gcm.Seal(nil, generateNonce(passphrase, gcm), data, nil)
 	return ciphertext, nil
+}
+
+// TODO: This might not be secure I know, :(
+func Hash256(data string) (string, error) {
+	h := sha256.New()
+	h.Write([]byte(data))
+	return string(h.Sum(nil)), nil
 }
 
 func Decrypt(data []byte, passphrase string) (string, error) {

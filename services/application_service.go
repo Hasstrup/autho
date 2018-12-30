@@ -34,7 +34,7 @@ func RegisterApplication(m *models.ApplicationModel, client *mongo.Client) (inte
 	m.Key, _ = HashWithBcrypt(m.Key)
 	encryptedKey, _ := Encrypt([]byte(m.Name+"--"+m.Address), *Pass)
 	// Hash the api key right before saving
-	m.ApiKey, _ = HashWithBcrypt(string(encryptedKey))
+	m.ApiKey, _ = Hash256(string(encryptedKey))
 	_, err := models.Save(m, client, applicationCollection)
 	claims := jwt.MapClaims{"payload": CustomSlice(encryptedKey)}
 	m.ApiKey = EncodeWithJwt(claims)

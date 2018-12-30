@@ -19,8 +19,9 @@ type BusinessMiddleware struct {
 func (b BusinessMiddleware) EnforceApiKey(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		apiKey := r.Header.Get("authorization")
-		if apiKey == "" {
-			utils.RespondWithJSON(w, 400, yieldError("Please send in the apikey in the request header with the 'x-authorization' field"))
+		secret := r.Header.Get("x-access-token")
+		if apiKey == "" || secret == "" {
+			utils.RespondWithJSON(w, 400, yieldError("Please send in the apikey & secret key in the request header with the 'x-authorization' field"))
 			return
 		}
 		defer func() {
@@ -29,8 +30,7 @@ func (b BusinessMiddleware) EnforceApiKey(next http.Handler) http.Handler {
 				utils.RespondWithJSON(w, 400, yieldError("Something went wrong"))
 			}
 		}()
-		// hash and write a cast
-		app, err := services.YieldAppFromApiKey(apiKey, b.Client)
+		app, err := services.YieldAppFromApiKey(apiKey, secret, b.Client)
 		if err != nil {
 			utils.RespondWithJSON(w, 400, yieldError(err.Error()))
 			return
