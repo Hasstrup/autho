@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/authenticate/drivers"
 	"github.com/authenticate/services"
 	utils "github.com/authenticate/utilities"
 )
@@ -22,14 +23,30 @@ type AuthController struct {
 func (AuthController) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	var body map[string]interface{}
 	err := json.NewDecoder(r.Body).Decode(&body)
-	// log.Println(body["main_application"])
-	app := body["main_application"].(map[string]interface{})
-	schema := app["Schema"].(map[string]interface{})
-	delete(body, "main_application")
-	errors := services.ValidateRequestAgainstSchema(utils.DeleteNilKeys(schema), body)
 	if err != nil {
 		utils.RespondWithJSON(w, 400, map[string]string{"error": err.Error()})
 		return
 	}
-	utils.RespondWithJSON(w, 200, map[string]interface{}{"application": errors})
+	app := body["main_application"].(map[string]interface{})
+	schema := app["Schema"].(map[string]interface{})
+	delete(body, "main_application")
+	errors := services.ValidateRequestAgainstSchema(utils.DeleteNilKeys(schema), body)
+	if len(errors) > 0 {
+		utils.RespondWithJSON(w, 400, map[string]interface{}{"errors": errors})
+		return
+	}
+	// Ping the database address and try to write to it
+	err = drivers.YieldDrivers(app["database"].(string))(app["address"].(string))
+	if err != nil {
+		utils.RespondWithJSON(w, 400, map[string]string{"error": err.Error()})
+		return
+	}
+	// TODO: Check for empty fields in the request body and perhaps we could do a maxLength type thing
+	// but before that :- let's just go ahead
+	result, err := services.NewDatabaseDriver(app, body).Write()
+	if err != nil {
+		utils.RespondWithJSON(w, 400, map[string]string{"error": err.Error()})
+		return
+	}
+	utils.RespondWithJSON(w, 200, map[string]interface{}{"application": result.Payload})
 }

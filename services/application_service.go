@@ -30,9 +30,9 @@ func RegisterApplication(m *models.ApplicationModel, client *mongo.Client) (inte
 	if itExists(m.Name, client) {
 		return nil, errors.New("Sorry the name is already taken :( ")
 	}
+	encryptedKey, _ := Encrypt([]byte(m.Name+"--"+m.Address), *Pass)
 	m.Address, _ = HashWithBcrypt(m.Address)
 	m.Key, _ = HashWithBcrypt(m.Key)
-	encryptedKey, _ := Encrypt([]byte(m.Name+"--"+m.Address), *Pass)
 	// Hash the api key right before saving
 	m.ApiKey, _ = Hash256(string(encryptedKey))
 	_, err := models.Save(m, client, applicationCollection)

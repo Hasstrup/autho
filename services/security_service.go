@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"log"
+	"strings"
 
 	"github.com/authenticate/models"
 	"github.com/mongodb/mongo-go-driver/mongo"
@@ -14,7 +15,6 @@ func YieldAppFromApiKey(key, secret string, client *mongo.Client) (*models.Worka
 		return nil, err
 	}
 	payload := extractPayload(k["payload"])
-	_, err = Decrypt(payload, *Pass)
 	hash, _ := Hash256(string(payload))
 	query := map[string]string{"api_key": hash}
 	result, err := models.FindWorkableApplication(query, client, "application")
@@ -28,6 +28,8 @@ func YieldAppFromApiKey(key, secret string, client *mongo.Client) (*models.Worka
 	if !CompareWithBcrypt(result.AppKey, secret) {
 		return nil, errors.New("Hey you do not have permissions to do that")
 	}
+	p, err := Decrypt(payload, *Pass)
+	result.Address = strings.Split(string(p), "--")[1]
 	return result, nil
 }
 

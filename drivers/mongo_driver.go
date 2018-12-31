@@ -12,7 +12,7 @@ func PingMongo(address string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	_, err := mongo.Connect(ctx, address)
 	if err != nil {
-		return errors.New("We tried connecting to the mongostring provided, did not work out :(.The mongo string provided should match 'mongodb://therestofyourmongostring' ")
+		return errors.New("We tried connecting to the mongostring provided, did not work out :(. The mongo string provided should match 'mongodb://therestofyourmongostring' ")
 	}
 	defer cancel()
 	defer Recover()
