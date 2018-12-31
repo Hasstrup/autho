@@ -30,13 +30,17 @@ func start(router *mux.Router) {
 
 }
 
+// TODO: this whole function is a mess - needs Refactoring
+
 func RegisterRoutes(c *mongo.Client) *mux.Router {
 	r := mux.NewRouter()
 	r.Use(middlewares.RequestLogger)
 	s := r.PathPrefix("/api/v1").Subrouter()
 	a := controllers.NewApplicationController(c)
-
+	m := middlewares.BusinessMiddleware{c}
+	autho := controllers.AuthController{a}
 	s.Handle("/register", middlewares.SanitizeApplicationRequest(http.HandlerFunc(a.RegisterApplication))).Methods("POST")
+	s.Handle("/auth/signup", m.EnforceApiKey(http.HandlerFunc(autho.RegisterUser))).Methods("POST")
 	s.HandleFunc("/application/update/{id}", a.UpdateApplicationDetails).Methods("PUT")
 	s.HandleFunc("/application/{name}/{appKey}", a.GetApplicationDetails).Methods("Get")
 	s.HandleFunc("/available/{name}", a.CheckAvailability).Methods("GET")

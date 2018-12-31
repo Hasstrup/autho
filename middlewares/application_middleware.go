@@ -44,7 +44,6 @@ func SanitizeApplicationRequest(next http.Handler) http.Handler {
 			utils.RespondWithJSON(w, 400, map[string][]string{"errors": errors})
 			return
 		}
-
 		//reset the content of r.Body
 		b, _ := json.Marshal(request)
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(b))

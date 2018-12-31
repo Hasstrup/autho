@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"reflect"
+
+	"github.com/mongodb/mongo-go-driver/bson/primitive"
 )
 
 func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
@@ -37,4 +39,28 @@ func Contains(el interface{}, ar []interface{}) bool {
 		}
 	}
 	return false
+}
+
+func CleanUpValue(target interface{}) interface{} {
+	if val, ok := target.([]interface{}); ok {
+		c := []primitive.E{}
+		for _, v := range val {
+			e := primitive.E{
+				Key:   v.(map[string]interface{})["Key"].(string),
+				Value: v.(map[string]interface{})["Value"],
+			}
+			c = append(c, e)
+		}
+		return primitive.D(c).Map()
+	}
+	return target
+}
+
+func DeleteNilKeys(sch map[string]interface{}) map[string]interface{} {
+	for key, value := range sch {
+		if value == nil {
+			delete(sch, key)
+		}
+	}
+	return sch
 }
