@@ -6,9 +6,12 @@ import (
 	"errors"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
+	utils "github.com/authenticate/utilities"
 	_ "github.com/lib/pq"
+	"github.com/mongodb/mongo-go-driver/bson/primitive"
 	"github.com/mongodb/mongo-go-driver/mongo"
 )
 
@@ -28,6 +31,7 @@ func (d *DatabaseDriver) Write() (*DatabaseDriver, error) {
 	}
 	if d.Database == "postgres" {
 		if id, err := d.WriteToPostgres(); err != nil {
+			log.Println(err)
 			return d, err
 		} else {
 			d.Payload["id"] = id
@@ -48,14 +52,17 @@ func (d *DatabaseDriver) WriteToPostgres() (int64, error) {
 		log.Println(err) //Perhaps a flag that tells whether to run in dev mode
 		return 0, err
 	}
-	query := `INSERT INTO ` + DefaultCollectionAndTable + " " + yieldKeys(d.Schema) + `VALUES` + yieldValues(d.Schema, d.Payload)
+	keys, values := BuildQuery(d.Schema, d.Payload)
+	query := `INSERT INTO ` + DefaultCollectionAndTable + " " + keys + ` VALUES` + values
 	log.Println(query) //dev mode
 	result, err := db.Exec(query)
 	if err != nil {
 		return 0, err
 	}
+	// TODO: not sure why but I dont think postgres supports the LastInsertedId thing
+	// sucks but need to find a workaround
 	id, err := result.LastInsertId()
-	return id, err
+	return id, nil
 }
 
 func (d *DatabaseDriver) WriteToMongo() (interface{}, error) {
@@ -95,32 +102,26 @@ func NewDatabaseDriver(app, body map[string]interface{}) *DatabaseDriver {
 	}
 }
 
-func yieldKeys(sch map[string]interface{}) string {
+func BuildQuery(sch, payload map[string]interface{}) (string, string) {
 	str := "("
-	for key := range sch {
-		str += (" " + key + ",")
-	}
-	str += ")"
-	return str
-}
-
-func yieldValues(schema, payload map[string]interface{}) string {
-	str := "("
-	for key, val := range schema {
-		// FORCE TO A STRING
-		if dataType, ok := val.(string); ok {
-			payload[key] = coerce(dataType, payload[key])
-		} else {
-			dt := val.(map[string]interface{})["type"].(string)
-			payload[key] = coerce(dt, payload[key])
-		}
+	values := " ("
+	for key, val := range sch {
+		str += (" " + key + ", ")
 		if key == "password" {
 			hash, _ := HashWithBcrypt(payload[key].(string))
 			payload[key] = hash
 		}
-		str += (" " + payload[key].(string) + "")
+		if dataType, ok := val.(string); ok {
+			payload[key] = coerce(dataType, payload[key])
+		} else {
+			dt := utils.CleanUpValue(val).(primitive.M)["type"].(string)
+			payload[key] = coerce(dt, payload[key])
+		}
+		values += (" " + payload[key].(string) + ",")
 	}
-	return str
+	str = strings.TrimSuffix(str, ", ")
+	str += ")"
+	return str, strings.TrimSuffix(values, ",") + ")"
 }
 
 func coerce(t string, field interface{}) string {
