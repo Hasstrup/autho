@@ -28,8 +28,9 @@ func SanitizeApplicationRequest(next http.Handler) http.Handler {
 
 		go CheckForRequiredFieldsInRequestBody(request, ch, &numberOfChecksDone)
 		go checkForEmptyValuesInBody(request, ch, &numberOfChecksDone)
-		go validateDatabaseStructure(request["database"], ch, &numberOfChecksDone, request["app_schema"])
+		go validateDatabaseStructure(request["database"], ch, &numberOfChecksDone)
 		go PingDatabaseAddress(request["database"], request["address"], ch, &numberOfChecksDone)
+
 		for msg := range ch {
 			switch msg.(type) {
 			case string:
@@ -70,48 +71,12 @@ func checkForLength(t reflect.Type, entity interface{}) bool {
 	}
 }
 
-func validateDatabaseStructure(e interface{}, ch chan interface{}, counter *int, schema interface{}) {
+func validateDatabaseStructure(e interface{}, ch chan interface{}, counter *int) {
 	if _, ok := e.(string); !ok {
 		ch <- "Database must be a string"
 	} else {
 		if !utils.Contains(e, PermittedDatabaseTypes) {
 			ch <- "Currently we only support postgresql and mongodb"
-		} else {
-			if sch, isValidMap := schema.(map[string]interface{}); !isValidMap {
-				ch <- "app_schema must be an object containing the fields that are either required"
-			} else {
-				for key, value := range sch {
-					if val, ok := value.(string); ok {
-						valid, err := isValidDataType(e.(string), val)
-						if err != nil {
-							ch <- err.Error()
-							break
-						}
-						if !valid {
-							ch <- "app_schema (" + key + ") must either be a 'string' or 'number' per database provided"
-						}
-						continue
-					}
-					if val, ok := value.(map[string]interface{}); ok {
-						if _, present := val["type"]; !present {
-							ch <- "Please specify the datatype for " + key
-						} else {
-							str, ok := val["type"].(string)
-							if valid, err := isValidDataType(e.(string), str); ok && valid {
-								if err != nil {
-									ch <- err.Error()
-									break
-								}
-							} else {
-								ch <- "app_schema (" + key + ") must either be 'string' or 'number' per database provided"
-							}
-						}
-						continue
-					}
-					//the value is neither a string nor an object
-					ch <- "The value of " + key + " should be a 'string' or an object (with a type field) :)"
-				}
-			}
 		}
 	}
 	*counter++

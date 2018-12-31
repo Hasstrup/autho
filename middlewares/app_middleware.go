@@ -17,6 +17,39 @@ var requiredSchemaFields = map[string]reflect.Kind{
 
 var stringTypes = []interface{}{"string", "number"}
 
+var SupportedOptions = map[string]map[string]interface{}{
+	"type": map[string]interface{}{
+		"type":     reflect.String,
+		"message":  "Type has to be present and has to be a string",
+		"required": true,
+	},
+	"maxLength": map[string]interface{}{
+		"type":     reflect.Float64,
+		"message":  "The maximum length for this field has to be a number",
+		"required": false,
+	},
+	"minLength": map[string]interface{}{
+		"type":     reflect.Float64,
+		"message":  "The minimum length for this field has to be a number",
+		"required": false,
+	},
+	"required": map[string]interface{}{
+		"type":     reflect.Bool,
+		"message":  "Required has to be a boolean",
+		"required": false,
+	},
+	"authenticable": map[string]interface{}{
+		"type":     reflect.Bool,
+		"message":  "Authenticable (If to be used in logging in users) has to a boolean",
+		"required": false,
+	},
+	"tokenizable": map[string]interface{}{
+		"type":     reflect.Bool,
+		"message":  "Tokenizable (If to be used in forming a token) has to be a boolean",
+		"required": false,
+	},
+}
+
 func PingDatabaseAddress(database, address interface{}, ch chan interface{}, counter *int) {
 	db, valid := database.(string)
 	addy, ok := address.(string)
@@ -59,6 +92,7 @@ func validateSchema(schema map[string]interface{}, ch chan interface{}) {
 	for key, value := range schema {
 		_, present := value.(string)
 		field, ok := value.(map[string]interface{})
+		//If it is anything but a string or a map
 		if !present && !ok {
 			ch <- "The datatype provided for schema '" + key + "' is invalid"
 			continue
@@ -68,21 +102,20 @@ func validateSchema(schema map[string]interface{}, ch chan interface{}) {
 			continue
 		}
 		if ok {
-			ty, ok := field["type"]
-			if !ok {
-				ch <- "Please supply the type for the schema (" + key + ") field"
-				continue
-			}
-			if ok && !utils.Contains(ty, stringTypes) {
-				ch <- "The type field for schema field (" + key + ") should be 'string' or 'number'"
-				continue
-			}
-			if required, present := field["required"]; present {
-				if _, isBool := required.(bool); !isBool {
-					ch <- "The required field for schema (" + key + ") should be a boolean :)"
+			for k, v := range SupportedOptions {
+				if !isValidType(field[k], v["type"].(reflect.Kind), v["required"].(bool)) {
+					ch <- "( " + key + " ) " + v["message"].(string)
 				}
 			}
-
 		}
 	}
+}
+
+func isValidType(value interface{}, desired reflect.Kind, required bool) bool {
+	if value == nil && !required {
+		return true
+	} else if value == nil && required {
+		return false
+	}
+	return reflect.TypeOf(value).Kind() == desired
 }
