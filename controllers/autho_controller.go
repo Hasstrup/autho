@@ -41,12 +41,20 @@ func (AuthController) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		utils.RespondWithJSON(w, 400, map[string]string{"error": err.Error()})
 		return
 	}
-	// TODO: Check for empty fields in the request body and perhaps we could do a maxLength type thing
-	// but before that :- let's just go ahead
+	utils.CheckForEmptyFieldsInMap(body, &errors)
+	utils.MatchRequestToLengthInSchema(schema, body, &errors)
+	if len(errors) > 0 {
+		utils.RespondWithJSON(w, 400, map[string]interface{}{"errors": errors})
+		return
+	}
 	result, err := services.NewDatabaseDriver(app, body).Write()
 	if err != nil {
 		utils.RespondWithJSON(w, 400, map[string]string{"error": err.Error()})
 		return
 	}
 	utils.RespondWithJSON(w, 200, map[string]interface{}{"application": result.Payload})
+}
+
+func (AuthController) Authenticate(w http.ResponseWriter, r *http.Request) {
+	utils.RespondWithJSON(w, 200, map[string]string{"message": "still working"})
 }
