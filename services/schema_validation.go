@@ -12,14 +12,14 @@ var typeMap = map[string]reflect.Kind{
 	"number": reflect.Int,
 }
 
-func ValidateRequestAgainstSchema(schema, body map[string]interface{}) []string {
+func ValidateRequestAgainstSchema(schema, body map[string]interface{}, key string) []string {
 	errors := []string{}
 	for key, data := range schema {
 		value := utils.CleanUpValue(data)
 		fieldMightBeRequired := reflect.TypeOf(value).Kind() == reflect.Map
 		if fieldMightBeRequired {
 			v := value.(primitive.M)
-			if required, present := v["required"]; present && required.(bool) {
+			if required, present := v[key]; present && required.(bool) {
 				val, ok := body[key]
 				if !ok {
 					errors = append(errors, key+" is a required field for this application")
