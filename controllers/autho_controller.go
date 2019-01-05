@@ -43,6 +43,7 @@ func (AuthController) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	}
 	utils.CheckForEmptyFieldsInMap(body, &errors)
 	utils.MatchRequestToLengthInSchema(schema, body, &errors)
+
 	if len(errors) > 0 {
 		utils.RespondWithJSON(w, 400, map[string]interface{}{"errors": errors})
 		return
@@ -55,6 +56,52 @@ func (AuthController) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithJSON(w, 200, map[string]interface{}{"application": result.Payload})
 }
 
+/*
+	The logic is to get the authenticable fields from the schema from the application
+	then find the authenticable fields and tokenizable fields from the app schema.
+	Do the validation per the fields in the schema then handle the login gracefully
+*/
 func (AuthController) Authenticate(w http.ResponseWriter, r *http.Request) {
-	utils.RespondWithJSON(w, 200, map[string]string{"message": "still working"})
+	var body map[string]interface{}
+	// TODO:
+	defer func() {
+		if e := recover(); e != nil {
+			utils.RespondWithJSON(w, 400, map[string][string]{ "error": "Something went wrong processing your request"})
+		}
+	}
+	err := json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		utils.RespondWithJSON(w, 422, map[string]string{"error": err.Error()})
+	}
+	app := body["main_application"].(map[string]interface{})
+	schema := app["Schema"].(map[string]interface{})
+	delete(body, "main_application")
+
+	//ping the database address first before anything
+	err = drivers.YieldDrivers(app["database"].(string))(app["address"].(string))
+	if err != nil {
+		utils.RespondWithJSON(w, 400, map[string]string{"error": err.Error()})
+		return
+	}
+	authFields, tokenKeys := utils.ExtractAuthenticableFields(utils.DeleteNilKeys(schema))
+	if len(authFields) == 0 {
+		utils.RespondWithJSON(w, 422, map[string]string{"error": "Sorry this application did not provide any authenticable fields, so we can't process this request"})
+		return
+	}
+	errors := services.ValidateRequestAgainstSchema(authFields, body)
+	utils.CheckForEmptyFieldsInMap(body, &errors)
+	utils.MatchRequestToLengthInSchema(schema, body, &errors)
+
+	if len(errors) > 0 {
+		utils.RespondWithJSON(w, 400, map[string]interface{}{"errors": errors})
+		return
+	}
+	r, err := services.NewDatabaseDriver(app, body).Authenticate()
+	if err != nil {
+		utils.RespondWithJSON(w, 403, map[string]string{ "error": err.Error()})
+	}
+	if len(authFields) > 0 {
+		d.Payload["token"] = d.YieldToken(authFields)
+	}
+	utils.RespondWithJSON(w, 200, map[string]interface{}{ "user": d.Payload })
 }
