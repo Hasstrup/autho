@@ -9,6 +9,7 @@ import (
 	"time"
 
 	utils "github.com/authenticate/utilities"
+	jwt "github.com/dgrijalva/jwt-go"
 	_ "github.com/lib/pq"
 	"github.com/mongodb/mongo-go-driver/bson/primitive"
 	"github.com/mongodb/mongo-go-driver/mongo"
@@ -22,14 +23,14 @@ func (d *DatabaseDriver) Authenticate() (*DatabaseDriver, error) {
 	var err error
 	// check for the authenticable field
 	for key, value := range d.Schema {
-		if val, ok := utils.CleanUpValue(val).(primitive.M); ok {
+		if val, ok := utils.CleanUpValue(value).(primitive.M); ok {
 			if key != "password" && val["authenticable"] != nil && val["authenticable"].(bool) {
 				target = key
 			}
 		}
 	}
 	if target == "" {
-		return d, errors.New("Sorry we could not find any authenticable field here sadly")
+		return d, errors.New("Sorry we could not find any authenticable field here in the schema, so we can't process this request")
 	}
 	if d.Database == "postgres" {
 		err = d.AuthenticatePostgres(target)
@@ -46,6 +47,9 @@ func (d *DatabaseDriver) AuthenticatePostgres(target string) error {
 	if err != nil {
 		log.Println(err)
 		return err
+	}
+	if d.Payload[target] == nil {
+		return errors.New(fmt.Sprintf("Please provide a %v field for this request to be processed", target))
 	}
 	query := d.buildSelectionQuery(target)
 	log.Println(query)
@@ -64,9 +68,9 @@ func (d *DatabaseDriver) AuthenticatePostgres(target string) error {
 	return err
 }
 
-
 func (d *DatabaseDriver) buildSelectionQuery(target string) string {
-	return fmt.Sprintf("SELECT password FROM %s WHERE %d=%v", DefaultCollectionAndTable, target, d.Payload[target].(string))
+	// original query was return fmt.Sprintf("SELECT password FROM %v where %s=%d", DefaultCollectionAndTable, target, d.Payload[target].(string))
+	return "SELECT password FROM " + DefaultCollectionAndTable + " WHERE " + target + "=" + "'" + d.Payload[target].(string) + "'"
 }
 
 func (d *DatabaseDriver) AuthenticateMongo(target string) error {
@@ -76,40 +80,39 @@ func (d *DatabaseDriver) AuthenticateMongo(target string) error {
 	if err != nil {
 		return err
 	}
-	collection := client.Database(d.Database).Collection(DefaultCollectionAndTable)
+	collection := client.Database(d.Name).Collection(DefaultCollectionAndTable)
 	query := map[string]string{}
-	query[target] = d.Payload[target].(string)
-	result := map[string]interface{}
+	str, ok := d.Payload[target].(string)
+	if !ok {
+		return errors.New(fmt.Sprintf("Please provide a %v field for this request to be processed", target))
+	}
+	query[target] = str
+	result := map[string]interface{}{}
 	r := collection.FindOne(ctx, query)
-     if e := r.Err(); e != nil {
-		if e == mongo.ErrNoDocuments { 
+	err = r.Decode(&result)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
 			return errors.New("Sorry we could not find a user matching the credentials sent")
 		}
 		return err
-	 }
-	 err = r.Decode(result)
-	 // hmm really
-	 if err != nil {
-		 return err
-	 }
-	 if CompareWithBcrypt(r["password"].(string), d.Payload["password"].(string)) {
-		 return nil
-	 }
-	 return errors.New("Invalid user/password combination")
+	}
+	if CompareWithBcrypt(result["password"].(string), d.Payload["password"].(string)) {
+		return nil
+	}
+	return errors.New("Invalid user/password combination")
 
 }
 
-
 func (d *DatabaseDriver) YieldToken(fields []string) string {
-	target := map[string]interface{}
-	for _, val := range fields {
-		target := utils.CleanUpValue(d.Schema[val])
-		if t, ok := target.(string); ok {
-			target[val] = coerce(t, d.Payload[val])
+	target := map[string]interface{}{}
+	for _, key := range fields {
+		to := utils.CleanUpValue(d.Schema[key])
+		if t, ok := to.(string); ok {
+			target[key] = coerce(t, d.Payload[key])
 		} else {
-			target[val] = coerce(target.(primitive.M)["type"].(string), d.Payload[val])
+			target[key] = coerce(to.(primitive.M)["type"].(string), d.Payload[key])
 		}
 	}
-	claims := jwt.MapClaims{"payload": target }
+	claims := jwt.MapClaims{"payload": target}
 	return EncodeWithJwt(claims)
 }
