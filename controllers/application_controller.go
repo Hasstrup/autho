@@ -33,10 +33,10 @@ func (ctr *ApplicationController) RegisterApplication(w http.ResponseWriter, r *
 	utils.RespondWithJSON(w, 200, app)
 }
 
+// check that the request contains the secret key -
+// A more interesting feature will be to show some fields based on the presence/absence
+// of the pass(secret key)
 func (ctr *ApplicationController) GetApplicationDetails(w http.ResponseWriter, r *http.Request) {
-	// check that the request contains the secret key -
-	// A more interesting feature will be to show some fields based on the presence/absence
-	// of the pass(secret key)
 	pass := r.Header.Get("x-access-token")
 	if pass == "" {
 		utils.RespondWithJSON(w, 403, map[string]string{"error": "Hey you need to send in you pass key"})
@@ -81,6 +81,24 @@ func (ctr *ApplicationController) CheckAvailability(w http.ResponseWriter, r *ht
 
 func (ctr *ApplicationController) UpdateApplicationDetails(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithJSON(w, 200, map[string]string{"here": "now"})
+}
+
+func (ctr *ApplicationController) RemoveApplication(w http.ResponseWriter, r *http.Request) {
+	var body map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		utils.RespondWithJSON(w, 422, map[string]string{"error": "Sorry we could not parse the input sent"})
+		return
+	}
+	application := body["main_application"].(map[string]interface{})
+	pass := r.Header.Get("x-access-token")
+	if !services.CompareWithBcrypt(application["app_key"].(string), pass) {
+		utils.RespondWithJSON(w, 401, map[string]string{"error": "Hey you do not have permissions to do that"})
+		return
+	}
+	if err := services.RemoveApplication(application["name"].(string), ctr.client); err != nil {
+		utils.RespondWithJSON(w, 400, map[string]string{"error": "Couldn't delete it at this point try again later"})
+	}
+	utils.RespondWithJSON(w, 209, map[string]interface{}{})
 }
 
 func NewApplicationController(client *mongo.Client) *ApplicationController {

@@ -44,6 +44,7 @@ func RegisterRoutes(c *mongo.Client) *mux.Router {
 	s.Handle("/register", middlewares.SanitizeApplicationRequest(http.HandlerFunc(a.RegisterApplication))).Methods("POST")
 	s.Handle("/auth/signup", m.EnforceApiKey(http.HandlerFunc(autho.RegisterUser))).Methods("POST")
 	s.Handle("/auth/login", m.EnforceApiKey(http.HandlerFunc(autho.Authenticate))).Methods("POST")
+	s.Handle("/delete", m.EnforceApiKey(http.HandlerFunc(a.RemoveApplication))).Methods("DELETE")
 	s.HandleFunc("/application/update/{id}", a.UpdateApplicationDetails).Methods("PUT")
 	s.HandleFunc("/fetch/{name}", a.GetApplicationDetails).Methods("GET")
 	s.HandleFunc("/available/{name}", a.CheckAvailability).Methods("GET")

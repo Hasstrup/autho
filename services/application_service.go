@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"flag"
 
@@ -54,6 +55,12 @@ func FindAllApplications(client *mongo.Client) ([]interface{}, error) {
 func FindOneApplication(query map[string]string, client *mongo.Client) map[string]interface{} {
 	result, _ := models.FindOne(query, client, applicationCollection)
 	return *result
+}
+
+func RemoveApplication(name string, client *mongo.Client) error {
+	collection := client.Database("autho").Collection(applicationCollection)
+	_, err := collection.DeleteOne(context.Background(), map[string]string{"name": name})
+	return err
 }
 
 func itExists(name string, client *mongo.Client) bool {
