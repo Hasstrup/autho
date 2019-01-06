@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/mux"
 
+	"github.com/authenticate/middlewares"
 	"github.com/authenticate/models"
 	"github.com/authenticate/services"
 	utils "github.com/authenticate/utilities"
@@ -83,6 +84,7 @@ func (ctr *ApplicationController) UpdateApplicationDetails(w http.ResponseWriter
 	// TODO: Repeating this block in the method following this one, makes a case for abstraction into
 	// a whole new function.
 	var body map[string]interface{}
+	var token string
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		utils.RespondWithJSON(w, 422, map[string]string{"error": "Sorry we could not parse the input sent"})
 		return
@@ -93,8 +95,43 @@ func (ctr *ApplicationController) UpdateApplicationDetails(w http.ResponseWriter
 		utils.RespondWithJSON(w, 401, map[string]string{"error": "Hey you do not have permissions to do that"})
 		return
 	}
-
-	utils.RespondWithJSON(w, 200, map[string]string{"here": "now"})
+	app := body["main_application"].(map[string]interface{})
+	delete(body, "main_application")
+	errors := []string{}
+	utils.CheckForEmptyFieldsInMap(body, &errors)
+	for key, value := range body {
+		switch key {
+		case "address":
+			middlewares.ValidationPipeline(key)(&errors, body["database"], value)
+		case "name":
+			middlewares.ValidationPipeline(key)(&errors, body["name"], ctr.client)
+		default:
+			middlewares.ValidationPipeline(key)(&errors, value)
+		}
+	}
+	if len(errors) > 0 {
+		utils.RespondWithJSON(w, 400, map[string][]string{"errors": errors})
+		return
+	}
+	// Recompute the api key for the user
+	if body["address"] != nil || body["name"] != nil {
+		if body["address"] != nil && body["name"] != nil {
+			token, hash := services.ComputeApiKey(body["name"].(string), body["address"].(string))
+			body["api_key"] = hash
+		} else {
+			utils.RespondWithJSON(w, 422, map[string]string{"error": "Hey, to change the name of your application, you also need to supply the db address (and vice versa), so we can compute a new api key for you :)"})
+			return
+		}
+	}
+	if e := services.UpdateApplicationDetails(app["name"].(string), body, ctr.client); e != nil {
+		utils.RespondWithJSON(w, 400, map[string]string{"error": e.Error()})
+		return
+	}
+	// return the new api key if there is a name/address field in the body
+	if body["address"] != nil || body["name"] != nil {
+		body["api_key"] = token
+	}
+	utils.RespondWithJSON(w, 200, map[string]interface{}{"payload": body})
 }
 
 func (ctr *ApplicationController) RemoveApplication(w http.ResponseWriter, r *http.Request) {

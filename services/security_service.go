@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/authenticate/models"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/mongodb/mongo-go-driver/mongo"
 )
 
@@ -51,4 +52,11 @@ func RootUserOnly(key string) error {
 		return errors.New("The key provided doesn't match the Autho App Key. Try again.")
 	}
 	return nil
+}
+
+func ComputeApiKey(name, addy string) (string, string) {
+	final := name + "--" + addy
+	raw, _ := Encrypt([]byte(final), *Pass)
+	final := EncodeWithJwt(jwt.MapClaims{"payload": CustomSlice(raw)})
+	return final, Hash256(string(raw))
 }

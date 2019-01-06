@@ -63,6 +63,19 @@ func RemoveApplication(name string, client *mongo.Client) error {
 	return err
 }
 
+func UpdateApplication(name string, body map[string]interface{}, client *mongo.Client) error {
+	switch {
+	case body["app_key"] != nil:
+		body["app_key"] = HashWithBcrypt(body["app_key"].(string))
+	case body["address"] != nil:
+		body["address"] = HashWithBcrypt(body["address"].(string))
+	}
+	collection := client.Database("autho").Collection(applicationCollection)
+	_, err := collection.UpdateOne(context.Background(), map[string]string{"name": name}, body)
+	return err
+
+}
+
 func itExists(name string, client *mongo.Client) bool {
 	item := FindOneApplication(map[string]string{"name": name}, client)
 	_, ok := item["_id"]

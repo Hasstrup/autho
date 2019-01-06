@@ -81,14 +81,14 @@ func CheckForRequiredFieldsInRequestBody(body map[string]interface{}, ch chan in
 			continue
 		}
 		if key == "app_schema" {
-			validateSchema(body["app_schema"].(map[string]interface{}), ch)
+			ValidateSchema(body["app_schema"].(map[string]interface{}), ch)
 		}
 	}
 	*counter++
 	ch <- true
 }
 
-func validateSchema(schema map[string]interface{}, ch chan interface{}) {
+func ValidateSchema(schema map[string]interface{}, ch chan interface{}, opts ...interface{}) {
 	for key, value := range schema {
 		_, present := value.(string)
 		field, ok := value.(map[string]interface{})
@@ -108,6 +108,9 @@ func validateSchema(schema map[string]interface{}, ch chan interface{}) {
 				}
 			}
 		}
+	}
+	if opts[0] != nil && opts[0].(bool) {
+		close(ch)
 	}
 }
 

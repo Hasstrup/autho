@@ -8,6 +8,11 @@ import (
 	"net/http"
 	"reflect"
 
+	"github.com/authenticate/services"
+	"github.com/mongodb/mongo-go-driver/mongo"
+
+	"github.com/authenticate/drivers"
+
 	utils "github.com/authenticate/utilities"
 )
 
@@ -95,4 +100,56 @@ func isValidDataType(database, value string) (bool, error) {
 		return false, nil
 	}
 	return true, nil
+}
+
+func ValidationPipeline(key string) func(errors *[]string, values ...interface{}) {
+	validationMap := map[string]func(errors *[]string, values ...interface{}){
+		"database": func(errors *[]string, values ...interface{}) {
+			str, ok := values[0].(string)
+			if !ok {
+				*errors = append(*errors, "Database needs to be a string")
+				return
+			}
+			if str != "mongodb" && str != "postgresql" {
+				*errors = append(*errors, "Hey we only support postgres and mongodb")
+			}
+		},
+		"address": func(errors *[]string, values ...interface{}) {
+			for _, val := range values {
+				if _, ok := val.(string); !ok {
+					*errors = append(*errors, "The database and address has to be a string")
+					return
+				}
+			}
+			err := drivers.YieldDrivers(values[0].(string))(values[1].(string))
+			if err != nil {
+				*errors = append(*errors, err.Error())
+			}
+		},
+		"app_schema": func(errors *[]string, values ...interface{}) {
+			var ch chan interface{}
+			ValidateSchema(values[0].(map[string]interface{}), ch, true)
+			for msg := range ch {
+				*errors = append(*errors, msg.(string))
+			}
+		},
+		"name": func(errors *[]string, values ...interface{}) {
+			if _, ok := values[0].(string); !ok {
+				*errors = append(*errors, "Name has to be a string please")
+			}
+			result = services.FindOneApplication(map[string]string{"name": values[0].(string)}, *values[1].(mongo.Client))
+			if result["_id"] != nil {
+				*errors = append(*errors, "The name is already taken sadly :(")
+			}
+		},
+		"app_key": func(errors *[]string, values ...interface{}) {
+			if _, ok := values[0].(string); !ok {
+				*errors = append(*errors, "App key has to be a string please")
+			}
+		},
+	}
+	if f, ok := validationMap[key]; ok {
+		return f
+	}
+	return func(errors *[]string, values ...interface{}) {}
 }
