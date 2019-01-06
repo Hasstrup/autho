@@ -9,7 +9,6 @@ import (
 	"github.com/authenticate/models"
 	"github.com/authenticate/services"
 	utils "github.com/authenticate/utilities"
-	"github.com/mongodb/mongo-go-driver/bson/primitive"
 	"github.com/mongodb/mongo-go-driver/mongo"
 )
 
@@ -51,24 +50,23 @@ func (ctr *ApplicationController) GetApplicationDetails(w http.ResponseWriter, r
 		return
 	}
 	if services.CompareWithBcrypt(result["app_key"].(string), pass) {
-		//FORMAT BODY
-		// These keys are hashed anyway and would make no sense to the user
-		// Sadly we cam never retrive the application's api_key. I love it
-		keys := []string{"id", "app_key", "address", "api_key"}
-		utils.DeleteKeys(&result, keys)
-		result["schema"] = result["schema"].(primitive.D).Map()
-		for key, value := range result["schema"].(primitive.M) {
-			result["schema"].(primitive.M)[key] = utils.CleanUpValue(value)
-		}
-		utils.RespondWithJSON(w, 200, map[string]interface{}{"result": result})
+		utils.RespondWithJSON(w, 200, map[string]interface{}{"result": utils.Transform(result)})
 		return
 	}
 	utils.RespondWithJSON(w, 401, map[string]interface{}{"error": "You do not have the permission to view this application"})
 }
 
 func (ctr *ApplicationController) GetAllApplications(w http.ResponseWriter, r *http.Request) {
-	results := services.FindAllApplications(ctr.client)
-	utils.RespondWithJSON(w, 200, results)
+	if err := services.RootUserOnly(r.Header.Get("Authorization")); err != nil {
+		utils.RespondWithJSON(w, 200, map[string]string{"error": err.Error()})
+		return
+	}
+	results, err := services.FindAllApplications(ctr.client)
+	if err != nil {
+		utils.RespondWithJSON(w, 422, map[string]string{"error": err.Error()})
+		return
+	}
+	utils.RespondWithJSON(w, 200, map[string]interface{}{"results": results})
 }
 
 func (ctr *ApplicationController) CheckAvailability(w http.ResponseWriter, r *http.Request) {

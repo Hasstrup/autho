@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/authenticate/models"
@@ -39,4 +40,15 @@ func extractPayload(g interface{}) []byte {
 		n = append(n, uint8(val.(float64)))
 	}
 	return n
+}
+
+func RootUserOnly(key string) error {
+	pass, ok := os.LookupEnv("AUTHOAPPKEY")
+	if !ok {
+		return errors.New("Hey you need to set the AUTHOAPPKEY as an env variable")
+	}
+	if pass != key {
+		return errors.New("The key provided doesn't match the Autho App Key. Try again.")
+	}
+	return nil
 }

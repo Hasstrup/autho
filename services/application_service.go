@@ -4,6 +4,8 @@ import (
 	"errors"
 	"flag"
 
+	utils "github.com/authenticate/utilities"
+
 	"github.com/authenticate/models"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/mongodb/mongo-go-driver/mongo"
@@ -41,9 +43,12 @@ func RegisterApplication(m *models.ApplicationModel, client *mongo.Client) (inte
 	return &m, err
 }
 
-func FindAllApplications(client *mongo.Client) []interface{} {
-	results, _ := models.FindAll(map[string]interface{}{}, client, applicationCollection)
-	return results
+func FindAllApplications(client *mongo.Client) ([]interface{}, error) {
+	results, err := models.FindAll(map[string]interface{}{}, client, applicationCollection)
+	for index, value := range results {
+		results[index] = utils.Transform(value.(map[string]interface{}))
+	}
+	return results, err
 }
 
 func FindOneApplication(query map[string]string, client *mongo.Client) map[string]interface{} {

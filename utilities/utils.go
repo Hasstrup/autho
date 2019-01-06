@@ -73,3 +73,18 @@ func DeleteKeys(target *map[string]interface{}, keys []string) {
 		delete(*target, key)
 	}
 }
+
+//FORMAT BODY
+// These keys are hashed anyway and would make no sense to the user
+// Sadly we cam never retrieve the application's api_key. I love it.
+// if the user forgets his/her/{any fitting pronoun} api key, he/she/{any fitting pronoun} would have
+// to change their secret key. So we can recompute all over again
+func Transform(r map[string]interface{}) map[string]interface{} {
+	keys := []string{"id", "app_key", "address", "api_key"}
+	DeleteKeys(&r, keys)
+	r["schema"] = r["schema"].(primitive.D).Map()
+	for key, value := range r["schema"].(primitive.M) {
+		r["schema"].(primitive.M)[key] = CleanUpValue(value)
+	}
+	return r
+}
