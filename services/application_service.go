@@ -1,8 +1,11 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"flag"
+
+	utils "github.com/authenticate/utilities"
 
 	"github.com/authenticate/models"
 	jwt "github.com/dgrijalva/jwt-go"
@@ -41,14 +44,36 @@ func RegisterApplication(m *models.ApplicationModel, client *mongo.Client) (inte
 	return &m, err
 }
 
-func FindAllApplications(client *mongo.Client) []interface{} {
-	results, _ := models.FindAll(map[string]interface{}{}, client, applicationCollection)
-	return results
+func FindAllApplications(client *mongo.Client) ([]interface{}, error) {
+	results, err := models.FindAll(map[string]interface{}{}, client, applicationCollection)
+	for index, value := range results {
+		results[index] = utils.Transform(value.(map[string]interface{}))
+	}
+	return results, err
 }
 
 func FindOneApplication(query map[string]string, client *mongo.Client) map[string]interface{} {
 	result, _ := models.FindOne(query, client, applicationCollection)
 	return *result
+}
+
+func RemoveApplication(name string, client *mongo.Client) error {
+	collection := client.Database("autho").Collection(applicationCollection)
+	_, err := collection.DeleteOne(context.Background(), map[string]string{"name": name})
+	return err
+}
+
+func UpdateApplication(name string, body map[string]interface{}, client *mongo.Client) error {
+	switch {
+	case body["app_key"] != nil:
+		body["app_key"], _ = HashWithBcrypt(body["app_key"].(string))
+	case body["address"] != nil:
+		body["address"], _ = HashWithBcrypt(body["address"].(string))
+	}
+	collection := client.Database("autho").Collection(applicationCollection)
+	_, err := collection.UpdateOne(context.Background(), map[string]string{"name": name}, map[string]interface{}{"$set": body})
+	return err
+
 }
 
 func itExists(name string, client *mongo.Client) bool {

@@ -3,9 +3,11 @@ package services
 import (
 	"errors"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/authenticate/models"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/mongodb/mongo-go-driver/mongo"
 )
 
@@ -39,4 +41,23 @@ func extractPayload(g interface{}) []byte {
 		n = append(n, uint8(val.(float64)))
 	}
 	return n
+}
+
+func RootUserOnly(key string) error {
+	pass, ok := os.LookupEnv("AUTHOAPPKEY")
+	if !ok {
+		return errors.New("Hey you need to set the AUTHOAPPKEY as an env variable")
+	}
+	if pass != key {
+		return errors.New("The key provided doesn't match the Autho App Key. Try again.")
+	}
+	return nil
+}
+
+func ComputeApiKey(name, addy string) (string, string) {
+	final := name + "--" + addy
+	raw, _ := Encrypt([]byte(final), *Pass)
+	token := EncodeWithJwt(jwt.MapClaims{"payload": CustomSlice(raw)})
+	hash, _ := Hash256(string(raw))
+	return token, hash
 }
