@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -20,6 +21,11 @@ type ApplicationController struct {
 
 func (ctr *ApplicationController) RegisterApplication(w http.ResponseWriter, r *http.Request) {
 	var m models.ApplicationModel
+	defer func() {
+		if err := recover(); err != nil {
+			utils.RespondWithJSON(w, 400, map[string]string{"error": "Something went wrong"})
+		}
+	}()
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&m)
 	if err != nil {
@@ -83,6 +89,12 @@ func (ctr *ApplicationController) CheckAvailability(w http.ResponseWriter, r *ht
 func (ctr *ApplicationController) UpdateApplicationDetails(w http.ResponseWriter, r *http.Request) {
 	// TODO: Repeating this block in the method following this one, makes a case for abstraction into
 	// a whole new function.
+	defer func() {
+		if err := recover(); err != nil {
+			log.Println(err)
+			utils.RespondWithJSON(w, 400, map[string]string{"error": "Something went wrong"})
+		}
+	}()
 	var body map[string]interface{}
 	var token string
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -116,14 +128,15 @@ func (ctr *ApplicationController) UpdateApplicationDetails(w http.ResponseWriter
 	// Recompute the api key for the user
 	if body["address"] != nil || body["name"] != nil {
 		if body["address"] != nil && body["name"] != nil {
-			token, hash := services.ComputeApiKey(body["name"].(string), body["address"].(string))
+			tk, hash := services.ComputeApiKey(body["name"].(string), body["address"].(string))
+			token = tk
 			body["api_key"] = hash
 		} else {
 			utils.RespondWithJSON(w, 422, map[string]string{"error": "Hey, to change the name of your application, you also need to supply the db address (and vice versa), so we can compute a new api key for you :)"})
 			return
 		}
 	}
-	if e := services.UpdateApplicationDetails(app["name"].(string), body, ctr.client); e != nil {
+	if e := services.UpdateApplication(app["name"].(string), body, ctr.client); e != nil {
 		utils.RespondWithJSON(w, 400, map[string]string{"error": e.Error()})
 		return
 	}
@@ -135,6 +148,11 @@ func (ctr *ApplicationController) UpdateApplicationDetails(w http.ResponseWriter
 }
 
 func (ctr *ApplicationController) RemoveApplication(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if err := recover(); err != nil {
+			utils.RespondWithJSON(w, 400, map[string]string{"error": "Something went wrong"})
+		}
+	}()
 	var body map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		utils.RespondWithJSON(w, 422, map[string]string{"error": "Sorry we could not parse the input sent"})

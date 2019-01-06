@@ -89,6 +89,7 @@ func CheckForRequiredFieldsInRequestBody(body map[string]interface{}, ch chan in
 }
 
 func ValidateSchema(schema map[string]interface{}, ch chan interface{}, opts ...interface{}) {
+
 	for key, value := range schema {
 		_, present := value.(string)
 		field, ok := value.(map[string]interface{})
@@ -109,9 +110,10 @@ func ValidateSchema(schema map[string]interface{}, ch chan interface{}, opts ...
 			}
 		}
 	}
-	if opts[0] != nil && opts[0].(bool) {
+	if len(opts) > 0 && opts[0].(bool) {
 		close(ch)
 	}
+
 }
 
 func isValidType(value interface{}, desired reflect.Kind, required bool) bool {

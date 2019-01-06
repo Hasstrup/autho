@@ -66,12 +66,12 @@ func RemoveApplication(name string, client *mongo.Client) error {
 func UpdateApplication(name string, body map[string]interface{}, client *mongo.Client) error {
 	switch {
 	case body["app_key"] != nil:
-		body["app_key"] = HashWithBcrypt(body["app_key"].(string))
+		body["app_key"], _ = HashWithBcrypt(body["app_key"].(string))
 	case body["address"] != nil:
-		body["address"] = HashWithBcrypt(body["address"].(string))
+		body["address"], _ = HashWithBcrypt(body["address"].(string))
 	}
 	collection := client.Database("autho").Collection(applicationCollection)
-	_, err := collection.UpdateOne(context.Background(), map[string]string{"name": name}, body)
+	_, err := collection.UpdateOne(context.Background(), map[string]string{"name": name}, map[string]interface{}{"$set": body})
 	return err
 
 }

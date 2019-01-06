@@ -57,6 +57,7 @@ func RootUserOnly(key string) error {
 func ComputeApiKey(name, addy string) (string, string) {
 	final := name + "--" + addy
 	raw, _ := Encrypt([]byte(final), *Pass)
-	final := EncodeWithJwt(jwt.MapClaims{"payload": CustomSlice(raw)})
-	return final, Hash256(string(raw))
+	token := EncodeWithJwt(jwt.MapClaims{"payload": CustomSlice(raw)})
+	hash, _ := Hash256(string(raw))
+	return token, hash
 }
