@@ -80,6 +80,20 @@ func (ctr *ApplicationController) CheckAvailability(w http.ResponseWriter, r *ht
 }
 
 func (ctr *ApplicationController) UpdateApplicationDetails(w http.ResponseWriter, r *http.Request) {
+	// TODO: Repeating this block in the method following this one, makes a case for abstraction into
+	// a whole new function.
+	var body map[string]interface{}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		utils.RespondWithJSON(w, 422, map[string]string{"error": "Sorry we could not parse the input sent"})
+		return
+	}
+	application := body["main_application"].(map[string]interface{})
+	pass := r.Header.Get("x-access-token")
+	if !services.CompareWithBcrypt(application["app_key"].(string), pass) {
+		utils.RespondWithJSON(w, 401, map[string]string{"error": "Hey you do not have permissions to do that"})
+		return
+	}
+
 	utils.RespondWithJSON(w, 200, map[string]string{"here": "now"})
 }
 
