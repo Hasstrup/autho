@@ -53,6 +53,9 @@ func CleanUpValue(target interface{}) interface{} {
 		}
 		return primitive.D(c).Map()
 	}
+	if v, ok := target.(primitive.D); ok {
+		return v.Map()
+	}
 	return target
 }
 
@@ -63,4 +66,10 @@ func DeleteNilKeys(sch map[string]interface{}) map[string]interface{} {
 		}
 	}
 	return sch
+}
+
+func DeleteKeys(target *map[string]interface{}, keys []string) {
+	for _, key := range keys {
+		delete(*target, key)
+	}
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/authenticate/models"
 	"github.com/authenticate/services"
 	utils "github.com/authenticate/utilities"
+	"github.com/mongodb/mongo-go-driver/bson/primitive"
 	"github.com/mongodb/mongo-go-driver/mongo"
 )
 
@@ -34,11 +35,35 @@ func (ctr *ApplicationController) RegisterApplication(w http.ResponseWriter, r *
 }
 
 func (ctr *ApplicationController) GetApplicationDetails(w http.ResponseWriter, r *http.Request) {
+	// check that the request contains the secret key -
+	// A more interesting feature will be to show some fields based on the presence/absence
+	// of the pass(secret key)
+	pass := r.Header.Get("x-access-token")
+	if pass == "" {
+		utils.RespondWithJSON(w, 403, map[string]string{"error": "Hey you need to send in you pass key"})
+		return
+	}
 	name := mux.Vars(r)["name"]
 	query := map[string]string{"name": name}
-	// TODO: check that the application key matches the result before using the guy
 	result := services.FindOneApplication(query, ctr.client)
-	utils.RespondWithJSON(w, 200, result)
+	if result == nil {
+		utils.RespondWithJSON(w, 422, map[string]string{"error": "Oops looks like there is no application matching that record"})
+		return
+	}
+	if services.CompareWithBcrypt(result["app_key"].(string), pass) {
+		//FORMAT BODY
+		// These keys are hashed anyway and would make no sense to the user
+		// Sadly we cam never retrive the application's api_key. I love it
+		keys := []string{"id", "app_key", "address", "api_key"}
+		utils.DeleteKeys(&result, keys)
+		result["schema"] = result["schema"].(primitive.D).Map()
+		for key, value := range result["schema"].(primitive.M) {
+			result["schema"].(primitive.M)[key] = utils.CleanUpValue(value)
+		}
+		utils.RespondWithJSON(w, 200, map[string]interface{}{"result": result})
+		return
+	}
+	utils.RespondWithJSON(w, 401, map[string]interface{}{"error": "You do not have the permission to view this application"})
 }
 
 func (ctr *ApplicationController) GetAllApplications(w http.ResponseWriter, r *http.Request) {
