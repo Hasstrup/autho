@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"reflect"
 
@@ -135,7 +134,6 @@ func ValidationPipeline(key string) func(errors *[]string, values ...interface{}
 			ch := make(chan interface{})
 			go ValidateSchema(values[0].(map[string]interface{}), ch, true)
 			for msg := range ch {
-				log.Println(msg)
 				*errors = append(*errors, msg.(string))
 			}
 		},
