@@ -37,6 +37,7 @@ func FindOne(query map[string]string, client *mongo.Client, c string) (*map[stri
 	defer cancel()
 	var result map[string]interface{}
 	err := collection.FindOne(ctx, query).Decode(&result)
+	log.Println(err)
 	return &result, err
 }
 
